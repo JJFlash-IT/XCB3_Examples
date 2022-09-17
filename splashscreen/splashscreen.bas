@@ -78,12 +78,12 @@ screen_2  = $6000 + offset_bitmap
 colors    = bin + HEADER_SIZE
 bitmap    = bin + HEADER_SIZE + nbcars
 
+j = shl(width, 3) ' width * 8
 for i = 0 to height - 1
 	memcpy colors, screen_1, width
 	colors = colors + width
 	screen_1 = screen_1 + width + modulo_colors
-	
-	j = shl(width, 3) ' width * 8
+
 	memcpy bitmap, screen_2, j
 	screen_2 = screen_2 + j + modulo_bitmap
 	bitmap = bitmap + j
