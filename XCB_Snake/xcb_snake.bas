@@ -57,7 +57,7 @@ do 'GAME LOOP
 loop
 
 sub cls() STATIC
-	sys $E544 FAST 'kernal clear screen
+	sys $E544 FAST 'kernel clear screen
 
 	textat 0, 0, "length: 4    xc-basic snake    speed: 1"
 
@@ -102,13 +102,14 @@ sub move_loop() STATIC
 
 		call check_eat()
 
-		'update screen
-		poke 1024 + snake_pieces(snake_length), SNAKE_CHAR
-
-		For J as BYTE = 1 to speed
+		For J as BYTE = 1 to speed + 8 ' + 8 is to compensate for the differences in speed between XCB 2.3 and XCB 3.1
 			'wait for frame
 			do : loop while cbyte(scan()) < 250
 		Next J
+
+		'update screen
+		poke 1024 + snake_pieces(snake_length), SNAKE_CHAR
+
 	loop
 end sub
 
