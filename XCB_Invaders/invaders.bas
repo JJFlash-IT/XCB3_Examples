@@ -5,7 +5,7 @@
 ' -- to be compiled using
 ' -- XC=BASIC v3.1
 ' -- 
-' -- porting from XCB2, bug-fixing, optimizing & added comments by @jjflash@mastodon.social
+' -- porting from XCB2, bug-fixing, optimizing & additional comments by @jjflash@mastodon.social
 ' -----------------------------------
 
 ' -- Global constants and variables
