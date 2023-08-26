@@ -100,7 +100,7 @@ sub resetPacman() STATIC
     sprite 7 HIRES COLOR 7  ON 
 end sub
 
-Dim game_bPacmanCaught as BYTE, game_iScaredTimer as INT, game_bPowerPelletAnimTimer as BYTE, game_wScanLine as WORD, game_bShortFrame as BYTE
+Dim game_bPacmanCaught as BYTE, game_iScaredTimer as INT, game_bPowerPelletAnimTimer as BYTE
 Dim game_iDotsToEat as INT, game_bPacmanTries as BYTE, game_dScore as DECIMAL
 CONST DOTS_NUM = 306
 
@@ -132,6 +132,8 @@ directionValues_Y:
 DATA AS BYTE 255, 0, 1, 0 'nord (-1), est, sud, ovest
 directionValues_X:
 DATA AS INT    0, 1, 0,-1 'nord     , est, sud, ovest
+
+Dim bShortFrame as BYTE
 
 sub initSounds() STATIC   
     VOICE 1 ADSR 8, 0, 6, 0  WAVE TRI 
@@ -221,7 +223,7 @@ sub updateMonster(bMonsterNum as BYTE) STATIC
                         if (bMonsterNum AND 1) then bDirectionToGo = 1 else bDirectionToGo = 3 'est, ovest
                     end if
                 case 64
-                    if bDirectionToGo = 0 then
+                    if bDirectionToGo = 0 then 'nord
                         if (bMonsterNum AND 1) then bDirectionToGo = 1 else bDirectionToGo = 3 'est, ovest
                     else
                         if bThis_ShapeNumber = 14 then bDirectionToGo = 2 'sud
@@ -231,7 +233,7 @@ sub updateMonster(bMonsterNum as BYTE) STATIC
         
         if bThis_ShapeNumber = 13 then
             if game_iScaredTimer < 121 then
-                if (game_iScaredTimer AND 8) = 0 then sprite bMonsterNum COLOR 15 else sprite bMonsterNum COLOR 6
+                if (game_iScaredTimer AND 8) = 0 then sprite bMonsterNum COLOR 15 else sprite bMonsterNum COLOR 6 'alterna fra grigio chiaro (15) e blu (6)
             end if
         end if
  
@@ -261,18 +263,18 @@ sub updateMonster(bMonsterNum as BYTE) STATIC
                     case 2 'Mostro 2 punta a 8 caselle INDIETRO a Pacman   
                         iTargetTile_X = pacman_iMap_X - pacman_iDirection_X
                         bTargetTile_Y = pacman_bMap_Y - pacman_bDirection_Y
+                    case 3 'Mostro 3 punta a Pacman, MA se è "distante" meno di 12 (distanza "Manhattan"), scappa all'angolo in basso a sinistra
+                        iThis_Distance = ABS(CINT(pacman_bMap_Y) - CINT(bThis_Map_Y)) + ABS(pacman_iMap_X - iThis_Map_X)
+                        if iThis_Distance < 12 then
+                            iTargetTile_X = 4
+                            bTargetTile_Y = 20
+                        end if
                 end select
+                'per sicurezza si controlla che la casella bersaglio finale non esca fuori dalla mappa...
                 if iTargetTile_X < 3 then iTargetTile_X = 3
                 if iTargetTile_X > 36 then iTargetTile_X = 36
                 if bTargetTile_Y > 127 then bTargetTile_Y = 1
                 if bTargetTile_Y > 20 then bTargetTile_Y = 20
-                if bMonsterNum = 3 then
-                    iThis_Distance = ABS(CINT(pacman_bMap_Y) - CINT(bThis_Map_Y)) + ABS(pacman_iMap_X - iThis_Map_X)
-                    if iThis_Distance < 12 then
-                        iTargetTile_X = 4
-                        bTargetTile_Y = 20
-                    end if
-                end if
             case 14
                 if bThis_Map_Y = 8 then
                     iTargetTile_X = 19
@@ -323,6 +325,7 @@ sub updateMonster(bMonsterNum as BYTE) STATIC
                 aMonsters(bMonsterNum).bMovementTimer = 255
                 game_dScore = game_dScore + 500d
                 snd_bMonsterEaten_Timer = SND_MONSTER_EATEN_TIMER_START
+                textat 31, 24, game_dScore
         end select
     end if
     
@@ -439,6 +442,7 @@ sub updatePacman() STATIC
                 call scareTheMonsters()
                 game_dScore = game_dScore + 40d
             end if
+            textat 31, 24, game_dScore
             poke wPacmanAddress, 29
             snd_bDotEaten_Timer = SND_DOT_EATEN_TIMER_START
         end if
@@ -536,7 +540,7 @@ sub waitForJoystick() STATIC
 end sub
 
 sub pacmanAppears() STATIC
-    'prima di scrivere "ready!", mi salvo quello che "c'è sotto"...
+    'prima di scrivere "ready!", mi salvo quello che c'è sotto...
     memcpy $85F1, $0400, 6 'la memoria "classica" del video è ora a disposizione come area d'appoggio
     textat 17, 12, "ready{92}", 7 'giallo - al carattere "£" (ASCII 92) c'è ridisegnato il punto esclamativo
     
@@ -615,6 +619,8 @@ sub titleScreen() STATIC
     
     textat 5, 18, "use joystick in port 2 to play", 3 'ciano
     
+    textat 31, 21, "rev01", 11 'grigio scuro
+    
     call waitForJoystick()
 end sub
 
@@ -646,32 +652,33 @@ do 'loop di *** INIZIO PARTITA ***
         
         call initSounds()
         
+        call waitForNextFrame(1)
+
         do 'loop **** PRINCIPALE! **** -----------------------------------------------------------------------------------------
-
-            game_wScanLine = scan()
-            game_bShortFrame = TRUE
-
+            bShortFrame = TRUE
+            
             call drawActors()
             call animatePowerPellets()
-            textat 31, 24, game_dScore
           
             call soundHandler()
 
             call updateMonster(0)
             call updateMonster(1)
             call updateMonster(2)
-            
-            if scan() < game_wScanLine then game_bShortFrame = FALSE
+
+            if scan() < 220 then bShortFrame = FALSE
             call updateMonster(3)
-            if scan() < game_wScanLine then game_bShortFrame = FALSE
+            if scan() < 220 then bShortFrame = FALSE
 
             if game_bPacmanCaught then exit do '-----USCITA ANTICIPATA PER PACMAN ACCHIAPPATO!
             call updatePacman()
 
-            if game_iScaredTimer <> 0 then game_iScaredTimer = game_iScaredTimer - 1
-            if game_iScaredTimer = 0 then call restoreTheMonsters()
+            if game_iScaredTimer <> 0 then
+                game_iScaredTimer = game_iScaredTimer - 1
+                if game_iScaredTimer = 0 then call restoreTheMonsters()
+            end if
             
-            if game_bShortFrame then
+            if bShortFrame then
                 do until scan() < 220 : loop
             end if
 
