@@ -28,7 +28,7 @@ sprite multicolor 1, 0
 'Nei tanti comandi che XCB mette a disposizione manca quello per impostare il Banco
 'di memoria del VIC-II. Tocca arrangiare con una Poke.
 'Il Banco si imposta con gli ultimi 2 bit a destra. Purtroppo qui i bit sono *attivi bassi*,
-'per cui per ottenere il valore bisogna sottrarre 3 al banco che ci interessa.
+'per cui per ottenere il valore bisogna sottrarre da 3 il banco che ci interessa.
 'In questo caso, 3 - 2 = 1, cioè %01
 poke $DD00, %00010101 
 
