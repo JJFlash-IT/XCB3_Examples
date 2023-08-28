@@ -62,9 +62,10 @@ CONST TRUE = 255
 
 'E qui si definiscono le "proprietà" dei 4 fantasmi (qui chiamati Monster in omaggio a quel che
 'in realtà sono, è solo dopo che abbiamo preso a chiamarli fantasmi)
-'Per rispetto ad AGPX, _non_ ho usato subroutine o funzioni nel Type, perché quelle bloccavano
-'AGPX dall'usare i comandi "nativi" di XCB per gli sprite (cosa che lo ha spinto a reinventare la ruota
-'già pronta) quando ha scritto la sua versione. Se avesse fatto come ho fatto io non avrebbe avuto intralci
+'Per rispetto ad AGPX, _non_ ho usato subroutine o funzioni nel Type, perché quelle impedivano ad
+'AGPX di usare i comandi "nativi" di XCB per gli sprite (cosa che lo ha spinto a reinventare la ruota
+'già pronta) quando ha scritto la sua versione. Se avesse fatto come ho fatto io non avrebbe avuto intralci.
+'(Non è chiaro invece perché ha reinventato anche la ruota per i suoni, quelli funzionavano egregiamente già ai tempi)
 type tMonster
     iCoord_X as INT
     bCoord_Y as BYTE
@@ -375,7 +376,11 @@ sub updateMonster(bMonsterNum as BYTE) STATIC
         end if
         'Qui vengono ricavate le coordinate di Mappa (non quelle a pixel) di questo fantasma.
         'Sostanzialmente si divide per otto, la qual cosa si fa velocemente se si fanno slittare _a destra_ di 3 posti i bit
-        'che compongono il numero trattato
+        'che compongono il numero trattato. Perché prendersi questo disturbo? Perché moltiplicazioni e divisioni, come detto,
+        'costano care al 6510, quindi laddove possibile si usa questo sistema.
+        'XCB potrebbe evitarci di sapere queste cose, facendo in automatico queste sostituzioni quando vede operazioni
+        'fatte con le potenze del 2? Assolutamente sì, ma tutto sta nel tempo e nelle energie disponibili all'autore
+        'del compilatore  :-)
         iThis_Map_X = shr(iThis_Coord_X, 3) : bThis_Map_Y = shr(bThis_Coord_Y, 3)
 
         'Si "tiene a mente" la direzione opposta a quella in cui questo fantasma sta viaggiando
@@ -464,6 +469,7 @@ sub updateMonster(bMonsterNum as BYTE) STATIC
             iThis_Distance = iThis_Distance + (iPartialDistance * iPartialDistance)
             'Se questo fantasma è "spaventato" (13), la distanza così calcolata viene INVERTITA, usando il numero della distanza
             'al quadrato maggiore possibile (1424). Facendo così, il fantasma preferirà allontanarsi anziché avvicinarsi al bersaglio
+            '(che è sempre Pacman, durante questo stato)
             if bThis_ShapeNumber = 13 then iThis_Distance = 1424 - iThis_Distance
 
             'Se questa distanza è la minore finora trovata, questa direzione è papabile per la scelta
@@ -530,7 +536,7 @@ sub updateMonster(bMonsterNum as BYTE) STATIC
     aMonsters(bMonsterNum).bDirection = bDirectionToGo
 end sub
 
-'Routine per rendere tutti i fantasmi "normali" (status 12, e solo loro) dei fantasmi "spaventati" (status 13)
+'Routine che rende tutti i fantasmi "normali" (status 12, e solo loro) dei fantasmi "spaventati" (status 13)
 'Altra cosa poco ortodossa qui, il copia-e-incolla di uno stesso set di impostazioni ripetuto 3 volte, anziché
 'fare un ciclo For o Do-While. Questa cosa si fa spesso in Assembly, in inglese si chiama "loop unrolling", cioè viene
 '"srotolato" un loop ripetendo pedissequamente le operazioni che si sarebbero specificate una volta in un ciclo. Lo svantaggio è maggior
@@ -577,6 +583,7 @@ sub scareTheMonsters() STATIC
     
     'Parte il timer per la durata dell'effetto energizzante!
     game_iScaredTimer = 350 '7 secondi * 50 frame/sec = 350
+    'E parte anche il suono...
     snd_bPowerDotEaten_Timer = SND_POWERDOT_EATEN_TIMER_START
 end sub
 
@@ -620,11 +627,11 @@ sub updatePacman() STATIC
     'Banalmente, per prima cosa, si legge il Joystick dalla porta 2
     bJoy2 = JOY(2)
     
-    'Se Pacman non sta sulla Mappa su una posizione multipla di 8...
+    'Se Pacman non sta, a livello di *pixel*, su una posizione multipla di 8...
     if (pacman_iCoord_X AND 7) <> 0 OR (pacman_bCoord_Y AND 7) then
         'Anche qui, come coi fantasmi, non vengono fatti controlli sui Muri, Pacman *deve* spostarsi da una casella all'altra.
         'Unica concessione: il poter tornare indietro. Quando il joystick viene mosso, viene controllato se è stato mosso nella direzione
-        'opposta rispetto a prima. Altrimenti, Pacman procede fino alla casella di destinazione senza fermarsi o altro
+        'opposta rispetto a prima. Se così non è, Pacman procede fino alla casella di destinazione senza fermarsi o altro
         if (bJoy2 AND 4) AND pacman_iDelta_X = 1 then pacman_iDelta_X = -1 
         if (bJoy2 AND 8) AND pacman_iDelta_X = -1 then pacman_iDelta_X = 1 
         if (bJoy2 AND 1) AND pacman_bDelta_Y = 1 then pacman_bDelta_Y = CBYTE(-1)
@@ -790,7 +797,7 @@ end sub
 'Attende che il joystick venga azionato (sia la leva che il pulsante di fuoco)
 'Qui viene fatto quello che in inglese si chiama "de-bouncing": un primo loop esce
 'solo quando il joystick è in posizione neutra. L'altro esce quando viene azionato il joystick.
-'Questo viene fatto per evitare che movimenti precedenti facciano saltare accidentalmente dei messaggi o simile
+'Questo viene fatto per evitare che movimenti precedenti facciano saltare accidentalmente dei messaggi a video o simile
 sub waitForJoystick() STATIC
     do while JOY(2) : loop
     do until JOY(2) : loop
